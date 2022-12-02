@@ -73,17 +73,22 @@ func (r *Round) Print() {
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
+	var part1 int64
 	var score int64
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		parts := strings.Split(line, " ")
-		r := New(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
-		score += int64(r.Score())
-		r.Print()
+
+		r1 := Round{Opponent: strings.TrimSpace(parts[0]), You: strings.TrimSpace(parts[1])}
+		part1 += int64(r1.Score())
+
+		r2 := New(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+		score += int64(r2.Score())
 	}
 
-	log.Printf("final score: %v\n", score)
+	log.Printf("part1 score: %v\n", part1)
+	log.Printf("part2 score: %v\n", score)
 
 	if err := scanner.Err(); err != nil {
 		log.Println(err)
