@@ -52,7 +52,7 @@ func (r *Range) String() string {
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
-	contians := 0
+	contains := 0
 	overlaps := 0
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -67,14 +67,14 @@ func main() {
 		}
 
 		if r1.Contains(r2) || r2.Contains(r1) {
-			contians++
+			contains++
 		}
 		if r1.Overlaps(r2) {
 			overlaps++
 		}
 	}
 
-	log.Printf("Fully contains: %v\n", contians)
+	log.Printf("Fully contains: %v\n", contains)
 	log.Printf("Overlaps: %v\n", overlaps)
 
 	if err := scanner.Err(); err != nil {
