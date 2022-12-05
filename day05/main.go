@@ -19,6 +19,14 @@ func New() *Stack {
 	}
 }
 
+func (s *Stack) Clone() *Stack {
+	data := make([]string, len(s.data))
+	copy(data, s.data)
+	return &Stack{
+		data: data,
+	}
+}
+
 func (s *Stack) Peek() string {
 	return string(s.data[len(s.data)-1])
 }
@@ -53,8 +61,6 @@ func main() {
 	}
 	scanner.Scan()
 	scanner.Text() // consume empty line
-	//log.Printf("%+v\n", init)
-	//log.Printf("%v stacks\n", numStacks)
 
 	stacks := make([]Stack, numStacks)
 	for !init.Empty() {
@@ -66,7 +72,12 @@ func main() {
 			}
 		}
 	}
-	//log.Printf("%+v\n", stacks)
+
+	// For solving p1 and p2 at the same time, deep copy the data.
+	p2stacks := make([]*Stack, numStacks)
+	for i, s := range stacks {
+		p2stacks[i] = s.Clone()
+	}
 
 	for scanner.Scan() {
 		command := scanner.Text()
@@ -77,20 +88,18 @@ func main() {
 		to, _ := strconv.ParseInt(parts[5], 10, 64)
 
 		// Part 1
-		/*
-			for i := 0; i < int(amount); i++ {
-				val := stacks[from-1].Pop()
-				stacks[to-1].Push(val)
-			}
-		*/
+		for i := 0; i < int(amount); i++ {
+			val := stacks[from-1].Pop()
+			stacks[to-1].Push(val)
+		}
 
 		// Part 2
 		tmp := New()
 		for i := 0; i < int(amount); i++ {
-			tmp.Push(stacks[from-1].Pop())
+			tmp.Push(p2stacks[from-1].Pop())
 		}
 		for !tmp.Empty() {
-			stacks[to-1].Push(tmp.Pop())
+			p2stacks[to-1].Push(tmp.Pop())
 		}
 
 		//log.Printf("command: %v\n", command)
@@ -104,6 +113,12 @@ func main() {
 		part1 = fmt.Sprintf("%s%s", part1, s.Peek())
 	}
 	log.Printf("part1: %v\n", part1)
+
+	part2 := ""
+	for _, s := range p2stacks {
+		part2 = fmt.Sprintf("%s%s", part2, s.Peek())
+	}
+	log.Printf("part2: %v\n", part2)
 
 	if err := scanner.Err(); err != nil {
 		log.Println(err)
