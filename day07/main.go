@@ -36,6 +36,12 @@ func NewNode(name string, typ fstype, size int64, parent *Node) *Node {
 	}
 }
 
+func (n *Node) AddChild(name string, typ fstype, size int64) *Node {
+	child := NewNode(name, typ, size, n)
+	n.Children = append(n.Children, child)
+	return child
+}
+
 func (n *Node) TotalSize() int64 {
 	if n.FSType == FILE {
 		return n.Size
@@ -48,14 +54,13 @@ func (n *Node) TotalSize() int64 {
 	for _, c := range n.Children {
 		sum += c.TotalSize()
 	}
-
+	// memoize because the tree currently can't change.
 	n.totalSize = sum
 	return sum
 }
 
 func (n *Node) Print(depth int) {
 	sp := strings.Repeat(" ", depth)
-
 	if n.FSType == FILE {
 		log.Printf("%s%s (%v)", sp, n.Name, n.Size)
 	} else {
@@ -125,9 +130,7 @@ func main() {
 					}
 					// If we changing into a directory we haven't seen, add it.
 					if !found {
-						dir := NewNode(parts[2], DIR, 0, cur)
-						cur.Children = append(cur.Children, dir)
-						cur = dir
+						cur = cur.AddChild(parts[2], DIR, 0)
 					}
 				}
 			} else if parts[1] == "ls" {
@@ -139,16 +142,14 @@ func main() {
 			// we're in a file listing
 			parts := strings.Split(line, " ")
 			if parts[0] == "dir" {
-				dir := NewNode(parts[1], DIR, 0, cur)
-				cur.Children = append(cur.Children, dir)
+				cur.AddChild(parts[1], DIR, 0)
 				//log.Printf("new dir: %+v", dir)
 			} else {
 				sz, err := strconv.ParseInt(parts[0], 10, 64)
 				if err != nil {
 					panic(err)
 				}
-				file := NewNode(parts[1], FILE, sz, cur)
-				cur.Children = append(cur.Children, file)
+				cur.AddChild(parts[1], FILE, sz)
 				//log.Printf("new file: %+v", file)
 			}
 		}
