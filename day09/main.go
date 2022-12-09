@@ -59,8 +59,53 @@ const (
 	WIDTH  = 500
 )
 
-func valid(p *Pos) bool {
-	return p.Row >= 0 && p.Row < HEIGHT && p.Col >= 0 && p.Col < WIDTH
+func move(dir string, segments []*Pos, g Grid) {
+	segments[0].Add(dirs[dir])
+	for i := 1; i < len(segments); i++ {
+		cur := segments[i]
+		last := segments[i-1]
+		if TooFar(cur, last) {
+			// Very literal reading of the movement rules.
+			// if same row or column, move closer.
+			if cur.Row == last.Row {
+				if cur.Col > last.Col {
+					cur.Col--
+				} else {
+					cur.Col++
+				}
+			} else if cur.Col == last.Col {
+				if cur.Row > last.Row {
+					cur.Row--
+				} else {
+					cur.Row++
+				}
+			} else {
+				// otherwise diagonal
+				for _, d := range diags {
+					cand := cur.Clone()
+					cand.Add(d)
+					if !TooFar(last, cand) {
+						segments[i] = cand
+						break
+					}
+				}
+			}
+		}
+	}
+	last := segments[len(segments)-1]
+	g[last.Row][last.Col] = true
+}
+
+func printVisited(part string, g Grid) {
+	visited := 0
+	for _, r := range g {
+		for _, c := range r {
+			if c {
+				visited++
+			}
+		}
+	}
+	log.Printf("part %v %v", part, visited)
 }
 
 func main() {
@@ -74,11 +119,11 @@ func main() {
 		g2[i] = make([]bool, WIDTH)
 	}
 
-	head := &Pos{Row: HEIGHT / 2, Col: WIDTH / 2}
-	var last *Pos
-	tail := &Pos{Row: HEIGHT / 2, Col: WIDTH / 2}
-
-	g[tail.Row][tail.Col] = true
+	p1segments := []*Pos{
+		{Row: HEIGHT / 2, Col: WIDTH / 2},
+		{Row: HEIGHT / 2, Col: WIDTH / 2},
+	}
+	g[p1segments[0].Row][p1segments[0].Col] = true
 
 	segments := make([]*Pos, 10)
 	for i, _ := range segments {
@@ -98,51 +143,8 @@ func main() {
 
 		//log.Printf("%v", line)
 		for i := 0; int64(i) < steps; i++ {
-			// part 1
-			last = head.Clone()
-			head.Add(dirs[parts[0]])
-			if TooFar(head, tail) {
-				// This is wrong... but happens to work for a 2 segment rope...
-				tail = last
-			}
-			g[tail.Row][tail.Col] = true
-
-			// Part 2 - need to move each one down the line.. maybe
-			{
-				segments[0].Add(dirs[parts[0]])
-				for i := 1; i < len(segments); i++ {
-					cur := segments[i]
-					last := segments[i-1]
-					if TooFar(cur, last) {
-						// if same row or column, move closer.
-						if cur.Row == last.Row {
-							if cur.Col > last.Col {
-								cur.Col--
-							} else {
-								cur.Col++
-							}
-						} else if cur.Col == last.Col {
-							if cur.Row > last.Row {
-								cur.Row--
-							} else {
-								cur.Row++
-							}
-						} else {
-							// otherwise diagonal
-							for _, d := range diags {
-								cand := cur.Clone()
-								cand.Add(d)
-								if !TooFar(last, cand) {
-									segments[i] = cand
-									break
-								}
-							}
-						}
-					}
-				}
-				last = segments[len(segments)-1]
-				g2[last.Row][last.Col] = true
-			}
+			move(parts[0], p1segments, g)
+			move(parts[0], segments, g2)
 
 			/* debugging...
 			visual := make(map[string]int)
@@ -166,25 +168,8 @@ func main() {
 		}
 	}
 
-	visited := 0
-	for _, r := range g {
-		for _, c := range r {
-			if c {
-				visited++
-			}
-		}
-	}
-	log.Printf("part 1 %v", visited)
-
-	visited = 0
-	for _, r := range g2 {
-		for _, c := range r {
-			if c {
-				visited++
-			}
-		}
-	}
-	log.Printf("part 2 %v", visited)
+	printVisited("1", g)
+	printVisited("2", g2)
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
