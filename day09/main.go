@@ -7,49 +7,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/mikehelmick/AdventOfCode2022/pkg/twod"
 )
-
-var dirs = map[string]*Pos{
-	"R": NewPos(0, 1),
-	"U": NewPos(-1, 0),
-	"L": NewPos(0, -1),
-	"D": NewPos(1, 0),
-}
-
-var diags = []*Pos{
-	{Row: 1, Col: 1},
-	{Row: -1, Col: 1},
-	{Row: -1, Col: -1},
-	{Row: 1, Col: -1},
-}
 
 type Grid [][]bool
 
-type Pos struct {
-	Row int
-	Col int
-}
-
-func NewPos(r, c int) *Pos {
-	return &Pos{
-		Row: r,
-		Col: c,
-	}
-}
-
-func (p *Pos) Clone() *Pos {
-	return &Pos{
-		Row: p.Row,
-		Col: p.Col,
-	}
-}
-
-func (p *Pos) Add(o *Pos) {
-	p.Row += o.Row
-	p.Col += o.Col
-}
-
-func TooFar(p1, p2 *Pos) bool {
+func TooFar(p1, p2 *twod.Pos) bool {
 	return math.Abs(float64(p1.Row-p2.Row)) > 1 ||
 		math.Abs(float64(p1.Col-p2.Col)) > 1
 }
@@ -59,8 +23,8 @@ const (
 	WIDTH  = 500
 )
 
-func move(dir string, segments []*Pos, g Grid) {
-	segments[0].Add(dirs[dir])
+func move(dir string, segments []*twod.Pos, g Grid) {
+	segments[0].Add(twod.Dirs[dir])
 	for i := 1; i < len(segments); i++ {
 		cur := segments[i]
 		last := segments[i-1]
@@ -81,7 +45,7 @@ func move(dir string, segments []*Pos, g Grid) {
 				}
 			} else {
 				// otherwise diagonal
-				for _, d := range diags {
+				for _, d := range twod.Diags {
 					cand := cur.Clone()
 					cand.Add(d)
 					if !TooFar(last, cand) {
@@ -119,15 +83,15 @@ func main() {
 		g2[i] = make([]bool, WIDTH)
 	}
 
-	p1segments := []*Pos{
+	p1segments := []*twod.Pos{
 		{Row: HEIGHT / 2, Col: WIDTH / 2},
 		{Row: HEIGHT / 2, Col: WIDTH / 2},
 	}
 	g[p1segments[0].Row][p1segments[0].Col] = true
 
-	segments := make([]*Pos, 10)
+	segments := make([]*twod.Pos, 10)
 	for i, _ := range segments {
-		segments[i] = &Pos{Row: HEIGHT / 2, Col: WIDTH / 2}
+		segments[i] = &twod.Pos{Row: HEIGHT / 2, Col: WIDTH / 2}
 	}
 	// ok to take the wrong one here...
 	g2[segments[0].Row][segments[0].Col] = true
