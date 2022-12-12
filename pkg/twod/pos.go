@@ -1,5 +1,7 @@
 package twod
 
+import "fmt"
+
 var (
 	Dirs = map[string]*Pos{
 		"R": NewPos(0, 1),
@@ -26,6 +28,28 @@ func NewPos(r, c int) *Pos {
 		Row: r,
 		Col: c,
 	}
+}
+
+func (p *Pos) String() string {
+	return fmt.Sprintf("{%v,%v}", p.Row, p.Col)
+}
+
+type ValidFunc func(p *Pos) bool
+
+func (p *Pos) Equals(o *Pos) bool {
+	return p.Row == o.Row && p.Col == o.Col
+}
+
+func (p *Pos) Neighbors(f ValidFunc) []*Pos {
+	neighbors := make([]*Pos, 0, len(Dirs))
+	for _, d := range Dirs {
+		n := p.Clone()
+		n.Add(d)
+		if f(n) {
+			neighbors = append(neighbors, n)
+		}
+	}
+	return neighbors
 }
 
 func (p *Pos) Clone() *Pos {
