@@ -26,12 +26,12 @@ func (l *List) String() string {
 
 func (l *List) Compare(o Unit) int {
 	//log.Printf("comparing %v and %v", l, o)
-	switch o.(type) {
+	switch o := o.(type) {
 	case *Number:
-		return l.Compare(o.(*Number).ToList())
+		return l.Compare(o.ToList())
 	case *List:
 		// This is the critical piece of the solution.
-		right := o.(*List)
+		right := o
 		for i, v := range l.Data {
 			//log.Printf(" --> %v %v", i, v)
 
@@ -75,10 +75,10 @@ func (n *Number) ToList() *List {
 }
 
 func (n *Number) Compare(o Unit) int {
-	switch o.(type) {
+	switch o := o.(type) {
 	case *Number:
 		//log.Printf("comparing %v and %v", n, o)
-		return int(n.Value - o.(*Number).Value)
+		return int(n.Value - o.Value)
 	case *List:
 		return n.ToList().Compare(o)
 	}
