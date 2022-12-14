@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
+	"github.com/mikehelmick/AdventOfCode2022/pkg/straid"
 	"github.com/mikehelmick/AdventOfCode2022/pkg/twod"
 )
 
@@ -32,22 +32,13 @@ func load(l string) *Rocks {
 
 	parts := strings.Split(l, " -> ")
 	for _, pt := range parts {
-		ptarts := strings.Split(pt, ",")
-
-		c, err := strconv.ParseInt(ptarts[0], 10, 64)
-		if err != nil {
-			panic(err)
-		}
-		r, err := strconv.ParseInt(ptarts[1], 10, 64)
-		if err != nil {
-			panic(err)
-		}
-
-		pos := &twod.Pos{
+		ptparts := strings.Split(pt, ",")
+		c := straid.AsInt(ptparts[0])
+		r := straid.AsInt(ptparts[1])
+		points = append(points, &twod.Pos{
 			Row: int(r),
 			Col: int(c),
-		}
-		points = append(points, pos)
+		})
 	}
 	return &Rocks{
 		Points: points,
