@@ -36,6 +36,18 @@ func (p *Pos) String() string {
 
 type ValidFunc func(p *Pos) bool
 
+func (p *Pos) Dist(o *Pos) int {
+	x := p.Col - o.Col
+	if x <= 0 {
+		x *= -1
+	}
+	y := p.Row - o.Row
+	if y <= 0 {
+		y *= -1
+	}
+	return x + y
+}
+
 func (p *Pos) Equals(o *Pos) bool {
 	return p.Row == o.Row && p.Col == o.Col
 }
