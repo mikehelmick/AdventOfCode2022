@@ -35,24 +35,6 @@ func Parse(s string) (*twod.Pos, *twod.Pos) {
 	return sensor, beacon
 }
 
-func calcMin(m *twod.Pos, n *twod.Pos) {
-	if n.Row < m.Row {
-		m.Row = n.Row
-	}
-	if n.Col < m.Col {
-		m.Col = n.Col
-	}
-}
-
-func calcMax(m *twod.Pos, n *twod.Pos) {
-	if n.Row > m.Row {
-		m.Row = n.Row
-	}
-	if n.Col > m.Col {
-		m.Col = n.Col
-	}
-}
-
 type Pair struct {
 	sensor *twod.Pos
 	beacon *twod.Pos
@@ -67,18 +49,24 @@ func NewPair(s, b *twod.Pos) *Pair {
 	}
 }
 
-func couldBeBeacon(p *twod.Pos, pairs []*Pair) bool {
-	for _, sp := range pairs {
-		if p.Dist(sp.sensor) <= sp.dist {
-			return false
+type RangeList []*Range
+
+func (rl RangeList) Sort() {
+	sort.Slice(rl, func(i, j int) bool {
+		if rl[i].Low == rl[j].Low {
+			return rl[i].High <= rl[j].High
 		}
-	}
-	return true
+		return rl[i].Low <= rl[j].Low
+	})
 }
 
 type Range struct {
 	Low  int
 	High int
+}
+
+func (r *Range) Length() int {
+	return r.High - r.Low + 2 // inclusive
 }
 
 func (r *Range) String() string {
@@ -100,32 +88,48 @@ func (r *Range) Merge(o *Range) error {
 	return fmt.Errorf("found it")
 }
 
+func rowRanges(row int, pairs []*Pair) RangeList {
+	ranges := make(RangeList, 0, len(pairs))
+	for _, pair := range pairs {
+		dist := pair.dist
+		rDist := int(math.Abs(float64(pair.sensor.Row - row)))
+		if rDist > dist {
+			continue
+		}
+
+		rem := dist - rDist
+		thisRange := NewRange(pair.sensor.Col-rem, pair.sensor.Col+rem)
+		ranges = append(ranges, thisRange)
+	}
+	ranges.Sort()
+	return ranges
+}
+
+func part1(row int, pairs []*Pair) int {
+	ranges := rowRanges(row, pairs)
+
+	// Attempt to merge ranges.
+	merged := make(RangeList, 1, len(ranges))
+	merged[0] = ranges[0]
+	for i := 1; i < len(ranges); i++ {
+		err := merged[len(merged)-1].Merge(ranges[i])
+		if err != nil {
+			merged = append(merged, ranges[i])
+		}
+	}
+
+	// Count covered in target row.
+	answer := 0
+	for _, r := range merged {
+		answer += r.Length()
+	}
+	return answer
+}
+
 func part2(pairs []*Pair) *twod.Pos {
 	// Check each row in the search space.
 	for r := 0; r <= 4000000; r++ {
-		// figure out which items are covered by each sensor.
-		ranges := make([]*Range, 0, len(pairs))
-		for _, pair := range pairs {
-			dist := pair.dist
-			rDist := int(math.Abs(float64(pair.sensor.Row - r)))
-
-			if rDist > dist {
-				// that sensor doesn't cover anything in this row.
-				continue
-			}
-			rem := dist - rDist
-			// Make a range of all Cols covered by this sensor.
-			thisRange := NewRange(pair.sensor.Col-rem, pair.sensor.Col+rem)
-			ranges = append(ranges, thisRange)
-		}
-
-		// Sort the range.
-		sort.Slice(ranges, func(i, j int) bool {
-			if ranges[i].Low == ranges[j].Low {
-				return ranges[i].High <= ranges[j].High
-			}
-			return ranges[i].Low <= ranges[j].Low
-		})
+		ranges := rowRanges(r, pairs)
 
 		// Merge the ranges.
 		thisR := ranges[0]
@@ -145,64 +149,17 @@ func part2(pairs []*Pair) *twod.Pos {
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
-	min := &twod.Pos{Row: 1000000, Col: 1000000}
-	max := &twod.Pos{Row: 0, Col: 0}
-
 	pairs := make([]*Pair, 0)
-
-	sensors := make(map[string]bool)
-	beacons := make(map[string]bool)
-
-	maxD := 0
-
 	for scanner.Scan() {
 		line := scanner.Text()
 		s, b := Parse(line)
-		calcMin(min, s)
-		calcMin(min, b)
-		calcMax(max, s)
-		calcMax(max, b)
 		p := NewPair(s, b)
-		log.Printf("%v %v dist: %v", s, b, p.dist)
+		// log.Printf("%v %v dist: %v", s, b, p.dist)
 		pairs = append(pairs, p)
-
-		sensors[s.String()] = true
-		beacons[b.String()] = true
-		if p.dist > maxD {
-			maxD = p.dist
-		}
 	}
-	log.Printf("min: %v max: %v", min, max)
 
-	notCovered := 0
-	row := 2000000
-
-	// This can also be used to print the example output :)
-	//for row := min.Row; row <= max.Row; row++ {
-	for col := min.Col - maxD; col <= max.Col+maxD; col++ {
-		p := &twod.Pos{
-			Row: row, Col: col,
-		}
-		if sensors[p.String()] {
-			//fmt.Printf("S")
-			continue
-		} else if beacons[p.String()] {
-			//fmt.Printf("B")
-			continue
-		} else {
-			if !couldBeBeacon(p, pairs) {
-				//fmt.Printf("#")
-				//if row == 10 {
-				notCovered++
-				//}
-			} // else {
-			//fmt.Printf(".")
-			//}
-		}
-	}
-	fmt.Printf("\n")
-	//}
-	log.Printf("part 1: %v\n", notCovered)
+	part1 := part1(2000000, pairs)
+	log.Printf("part 1: %v\n", part1)
 
 	p := part2(pairs)
 	log.Printf("Candidate: %v", p)
