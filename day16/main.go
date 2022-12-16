@@ -2,15 +2,13 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
-	"sync"
 
 	"github.com/mikehelmick/AdventOfCode2022/pkg/straid"
-	"golang.org/x/sync/semaphore"
 )
 
 type Valve struct {
@@ -43,6 +41,9 @@ func LoadValve(s string) *Valve {
 
 type ValveMap map[string]*Valve
 
+// instead of pre-calculating the all pairs shortest path, just calculate on
+// demand and cache the answer. Shared between both parts, so it's not that
+// expensive and was faster to write.
 var spCache = make(map[string]int)
 
 func shortestPath(pos string, target string, valves ValveMap) int {
@@ -76,163 +77,120 @@ func shortestPath(pos string, target string, valves ValveMap) int {
 	panic(fmt.Sprintf("%+v", spCache))
 }
 
-func dfs(check map[string]bool, valves ValveMap, press int, minute int, time int, pos string) int {
+// Represents a valid solution under the constraints
+// The opened slice is an ordered list of the valves opened
+type Solution struct {
+	opened []string
+	flow   int
+
+	cache map[string]bool
+}
+
+func NewSolution(path []string, flow int) *Solution {
+	op := make([]string, len(path))
+	copy(op, path)
+	cache := make(map[string]bool)
+	for _, v := range path {
+		cache[v] = true
+	}
+	return &Solution{
+		opened: op,
+		flow:   flow,
+		cache:  cache,
+	}
+}
+
+func (s *Solution) String() string {
+	return fmt.Sprintf("%+v -> %v", s.opened, s.flow)
+}
+
+// Disjoint returns true if two solutions share no common valves.
+func (s *Solution) Disjoint(o *Solution) bool {
+	for k := range o.cache {
+		if s.cache[k] {
+			return false
+		}
+	}
+	return true
+}
+
+// dfs does a depth first search attempting to open valves and returns all possible solutions
+// based on the starting condition.
+func dfs(check map[string]bool, path []string, valves ValveMap, press int, minute int, time int, pos string) []*Solution {
+	// out of time, we have a solution.
+	if minute > time {
+		return []*Solution{NewSolution(path, press)}
+	}
+
+	// just moved to pos, open it and account for new flow up to time.
+	minute++
+	press += ((time - minute) * valves[pos].rate)
+	// that was the last possible valve to open, so this is a solution.
+	if len(check) == 0 {
+		return []*Solution{NewSolution(path, press)}
+	}
+
+	// make a defensive copy of the map, otherwise things get weird.
 	toOpen := make(map[string]bool)
 	for k, v := range check {
 		toOpen[k] = v
 	}
-	if minute > time {
-		return press
-	}
 
-	minute++
-	//fmt.Printf("%v", strings.Repeat(" ", 10-len(toOpen)))
-	added := (time - minute) * valves[pos].rate
-	press += added
-	//fmt.Printf("open %v at minute %v provides: %v --> %v\n", pos, minute, added, press)
-
-	if len(toOpen) == 0 {
-		return press
-	}
-
-	max := 0
+	sols := make([]*Solution, 0)
+	// accumulate all possible solutions when pos is opened and check is left to open.
 	for k, _ := range toOpen {
 		delete(toOpen, k)
-		v := dfs(toOpen, valves, press, minute+shortestPath(pos, k, valves), time, k)
+		path = append(path, k)
+		newSols := dfs(toOpen, path, valves, press, minute+shortestPath(pos, k, valves), time, k)
 		toOpen[k] = true
-		if v > max {
-			max = v
-		}
+		path = path[0 : len(path)-1]
+		sols = append(sols, newSols...)
 	}
-	return max
+	return sols
+}
+
+func getSolutions(toOpen map[string]bool, valves ValveMap, time int, pos string) []*Solution {
+	check := make(map[string]bool)
+	for k, v := range toOpen {
+		check[k] = v
+	}
+
+	sols := make([]*Solution, 0)
+	for k, _ := range toOpen {
+		// if we open k first... what's the payoff
+		delete(check, k)
+		newSols := dfs(check, []string{k}, valves, 0, shortestPath(pos, k, valves), time, k)
+		check[k] = true
+		sols = append(sols, newSols...)
+	}
+	return sols
 }
 
 func part1(toOpen map[string]bool, valves ValveMap, time int, pos string) int {
-	check := make(map[string]bool)
-	for k, v := range toOpen {
-		check[k] = v
-	}
-
-	max := 0
-	for k, _ := range toOpen {
-		//fmt.Printf("opening %v first\n", k)
-		// if we open k first... what's the payoff
-		delete(check, k)
-		v := dfs(check, valves, 0, shortestPath(pos, k, valves), time, k)
-		check[k] = true
-		if v > max {
-			max = v
-		}
-	}
-	return max
-}
-
-func dfs2(toOpen map[string]bool, valves ValveMap, press int, minute int, minuteE int, time int, pos string, epos string) int {
-	check := make(map[string]bool)
-	for k, v := range toOpen {
-		check[k] = v
-	}
-
-	if minute > time && minuteE > time {
-		return press
-	} else if minute > time {
-		minuteE++
-		added := (time - minuteE) * valves[epos].rate
-		press += added
-		return dfs(toOpen, valves, press, minuteE, time, epos)
-	} else if minuteE > time {
-		minute++
-		added := (time - minute) * valves[pos].rate
-		press += added
-		return dfs(toOpen, valves, press, minute, time, pos)
-	}
-
-	minute++
-	//fmt.Printf("%v", strings.Repeat(" ", 10-len(toOpen)))
-	added := (time - minute) * valves[pos].rate
-	press += added
-
-	minuteE++
-	added = (time - minuteE) * valves[epos].rate
-	press += added
-	//fmt.Printf("open %v at minute %v provides: %v --> %v\n", pos, minute, added, press)
-
-	if len(toOpen) == 1 {
-		for l, _ := range toOpen {
-			// who would get there faster
-			if minute+shortestPath(pos, l, valves) < minuteE+shortestPath(epos, l, valves) {
-				return dfs(map[string]bool{}, valves, press, minute+shortestPath(pos, l, valves), time, l)
-			} else {
-				return dfs(map[string]bool{}, valves, press, minuteE+shortestPath(epos, l, valves), time, l)
-			}
-		}
-	}
-
-	if len(toOpen) == 0 {
-		return press
-	}
-
-	max := 0
-	for k, _ := range toOpen {
-		for e, _ := range toOpen {
-			if k == e {
-				continue
-			}
-			delete(check, k)
-			delete(check, e)
-			v := dfs2(check, valves, press, minute+shortestPath(pos, k, valves), minuteE+shortestPath(epos, e, valves), time, k, e)
-			check[k] = true
-			check[e] = true
-			if v > max {
-				max = v
-			}
-		}
-	}
-	return max
+	sols := getSolutions(toOpen, valves, time, pos)
+	sort.Slice(sols, func(i, j int) bool { return sols[i].flow >= sols[j].flow })
+	return sols[0].flow
 }
 
 func part2(toOpen map[string]bool, valves ValveMap, time int, pos string) int {
-	ctx := context.Background()
-	sem := semaphore.NewWeighted(20)
+	sols := getSolutions(toOpen, valves, time, pos)
+	sort.Slice(sols, func(i, j int) bool { return sols[i].flow >= sols[j].flow })
+
+	// find the two highest (sorted) non overlapping
 	max := 0
-	var mu sync.Mutex
-	for k, _ := range toOpen {
-		for e, _ := range toOpen {
-			k := k
-			e := e
-			if k == e {
-				continue
+	for i := 0; i < len(sols); i++ {
+		for j := i + 1; j < len(sols); j++ {
+			nm := sols[i].flow + sols[j].flow
+			// each pair needs to be short circuited. Eventually this terminates fast.
+			if nm <= max {
+				break
 			}
-
-			check := make(map[string]bool)
-			for k, v := range toOpen {
-				check[k] = v
+			// avoid the expensive operation if we don't need it.
+			if sols[i].Disjoint(sols[j]) {
+				max = nm
 			}
-
-			sem.Acquire(ctx, 1)
-
-			go func() {
-				fmt.Printf("opening %v and %v first\n", k, e)
-				// if we open k first... what's the payoff
-				delete(check, k)
-				delete(check, e)
-				v := dfs2(check, valves, 0, shortestPath(pos, k, valves), shortestPath(pos, e, valves), time, k, e)
-				check[k] = true
-				check[e] = true
-				fmt.Printf("  -> v=%v\n", v)
-				mu.Lock()
-				defer mu.Unlock()
-				if v > max {
-					max = v
-				}
-				sem.Release(1)
-			}()
 		}
 	}
-
-	sem.Acquire(ctx, 20)
-	sem.Release(20)
-
 	return max
 }
 
@@ -240,24 +198,20 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	valves := make(ValveMap)
+	// Restrict the consideration to non-zero flow vales only.
+	toOpen := make(map[string]bool, len(valves))
 	for scanner.Scan() {
 		line := scanner.Text()
 		v := LoadValve(line)
 		valves[v.name] = v
-	}
-	log.Printf("%+v", valves)
-
-	toOpen := make(map[string]bool, len(valves))
-	for k, v := range valves {
 		if v.rate > 0 {
-			toOpen[k] = true
+			toOpen[v.name] = true
 		}
 	}
 	log.Printf("must open: %+v", toOpen)
 
 	pressure := part1(toOpen, valves, 30, "AA")
 	log.Printf("part 1 : %v", pressure)
-
 	log.Printf("part 2 : %v", part2(toOpen, valves, 26, "AA"))
 
 	if err := scanner.Err(); err != nil {
