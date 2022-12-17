@@ -238,6 +238,9 @@ func main() {
 	for i := 0; i < extra; i++ {
 		// For calculating the cycles in part 2.
 		/*
+			// I started by just printing all cycles over 50
+			// but eventually every point is a cycle.
+			// I narrowed it down to this first cycle starting at 193 and went 3 cycles out to be sure.
 			if i == 193 || i == 1933 || i == 3673 || i == 5413 {
 				state := NewState(i, jetI, chamber)
 				if p, ok := states[state]; ok {
