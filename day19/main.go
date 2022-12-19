@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mikehelmick/AdventOfCode2022/pkg/mathaid"
 	"github.com/mikehelmick/AdventOfCode2022/pkg/straid"
 )
 
@@ -245,12 +244,13 @@ func search(bp *Blueprint, minutes int) int {
 				return states[i].GeodeRobots >= states[j].GeodeRobots
 			})
 			ret := 0
-			needsAtLeast := mathaid.Max[int](0, states[0].GeodeRobots-1)
+			needs := states[0].GeodeRobots
 			for ; ret < len(states); ret++ {
-				if states[ret].GeodeRobots < needsAtLeast {
+				if states[ret].GeodeRobots != needs {
 					break
 				}
 			}
+			//log.Printf("keeping %v of %v", ret, len(states))
 			if ret > 0 {
 				states = states[0:ret]
 			}
