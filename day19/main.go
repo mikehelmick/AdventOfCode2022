@@ -132,6 +132,8 @@ func (s *State) Clone() *State {
 	}
 }
 
+// Tick moves the minute one forward and generates resources. Those resources are set in a
+// separate cache until Save is called.
 func (s *State) Tick() {
 	s.Minute++
 	// save aside, we can't spend it this minute.
@@ -141,6 +143,7 @@ func (s *State) Tick() {
 	s.newGeode = s.GeodeRobots
 }
 
+// Save moves resources generated this minute into the main pool.
 func (s *State) Save() {
 	s.Ore += s.newOre
 	s.Clay += s.newClay
@@ -148,6 +151,8 @@ func (s *State) Save() {
 	s.Geode += s.newGeode
 }
 
+// Purchase will construct a single robot based on the priority (Resource) passed in,
+// the current state, and the blueprint.
 func (s *State) Purchase(r Resource, bp *Blueprint) bool {
 	switch r {
 	case ORE:
