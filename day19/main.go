@@ -15,6 +15,7 @@ type Resource int
 
 const (
 	NONE Resource = iota
+	// Start at 1 because that's what the permutation generator did and I'm lazy.
 	ORE
 	CLAY
 	OBSIDIAN
@@ -23,36 +24,19 @@ const (
 
 var Types = []Resource{ORE, CLAY, OBSIDIAN, GEODE}
 
+// Offline generated all permutations of 1,2,3,4
 var orders = [][]int{
-	{1, 2, 3, 4},
-	{2, 1, 3, 4},
-	{3, 1, 2, 4},
-	{1, 3, 2, 4},
-	{2, 3, 1, 4},
-	{3, 2, 1, 4},
-	{3, 2, 4, 1},
-	{2, 3, 4, 1},
-	{4, 3, 2, 1},
-	{3, 4, 2, 1},
-	{2, 4, 3, 1},
-	{4, 2, 3, 1},
-	{4, 1, 3, 2},
-	{1, 4, 3, 2},
-	{3, 4, 1, 2},
-	{4, 3, 1, 2},
-	{1, 3, 4, 2},
-	{3, 1, 4, 2},
-	{2, 1, 4, 3},
-	{1, 2, 4, 3},
-	{4, 2, 1, 3},
-	{2, 4, 1, 3},
-	{1, 4, 2, 3},
-	{4, 1, 2, 3},
+	{1, 2, 3, 4}, {2, 1, 3, 4}, {3, 1, 2, 4}, {1, 3, 2, 4}, {2, 3, 1, 4}, {3, 2, 1, 4}, {3, 2, 4, 1}, {2, 3, 4, 1},
+	{4, 3, 2, 1}, {3, 4, 2, 1}, {2, 4, 3, 1}, {4, 2, 3, 1}, {4, 1, 3, 2}, {1, 4, 3, 2}, {3, 4, 1, 2}, {4, 3, 1, 2},
+	{1, 3, 4, 2}, {3, 1, 4, 2}, {2, 1, 4, 3}, {1, 2, 4, 3}, {4, 2, 1, 3}, {2, 4, 1, 3}, {1, 4, 2, 3}, {4, 1, 2, 3},
 }
 
+// Blueprint stores the cost functions for an individual blueprint.
 type Blueprint struct {
 	Number int
-	Costs  map[Resource]map[Resource]int
+	// Map, like ORE robot costs ORE ores. Unstructured even though the blueprints are all the same structure.
+	// Easier to code this way.
+	Costs map[Resource]map[Resource]int
 }
 
 func (bp *Blueprint) String() string {
@@ -71,6 +55,7 @@ func NewBlueprint() *Blueprint {
 	return bp
 }
 
+// Load turns a single line from the input into a Blueprint struct.
 func Load(s string) *Blueprint {
 	bp := NewBlueprint()
 	// Blueprint 1: Each ore robot costs 3 ore.    // 0,1
@@ -98,6 +83,8 @@ func Load(s string) *Blueprint {
 	return bp
 }
 
+// State represents a point in time search state.
+// For a single minute call Tick(), do the purchasing, and then call Save()
 type State struct {
 	Minute         int
 	OreRobots      int
