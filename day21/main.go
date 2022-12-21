@@ -11,28 +11,11 @@ import (
 	"github.com/mikehelmick/AdventOfCode2022/pkg/straid"
 )
 
-type Operator int
-
-const (
-	NONE Operator = iota
-	ADD
-	SUB
-	MUL
-	DIV
-)
-
-var opMap = map[string]Operator{
-	"+": ADD,
-	"-": SUB,
-	"*": MUL,
-	"/": DIV,
-}
-
 type Element struct {
 	Name  string
 	Value int64
 
-	Opp   Operator
+	Opp   string
 	Left  *Element
 	Right *Element
 
@@ -47,15 +30,15 @@ func (e *Element) Check() (string, int64) {
 
 func (e *Element) Calculate() int64 {
 	switch e.Opp {
-	case NONE:
+	case "":
 		return e.Value
-	case ADD:
+	case "+":
 		return e.Left.Calculate() + e.Right.Calculate()
-	case SUB:
+	case "-":
 		return e.Left.Calculate() - e.Right.Calculate()
-	case MUL:
+	case "*":
 		return e.Left.Calculate() * e.Right.Calculate()
-	case DIV:
+	case "/":
 		return e.Left.Calculate() / e.Right.Calculate()
 	}
 	panic("no op")
@@ -69,7 +52,7 @@ func Load(s string) *Element {
 		parts := strings.Split(parts[1], " ")
 		return &Element{
 			Name:      name,
-			Opp:       opMap[parts[1]],
+			Opp:       parts[1],
 			LeftName:  parts[0],
 			RightName: parts[2],
 		}
@@ -77,7 +60,7 @@ func Load(s string) *Element {
 	return &Element{
 		Name:  name,
 		Value: straid.AsInt(parts[1]),
-		Opp:   NONE,
+		Opp:   "",
 	}
 }
 
@@ -103,6 +86,7 @@ func main() {
 	part1 := eMap["root"].Calculate()
 	log.Printf("part 1: %v", part1)
 
+	// This is the binary search check function.
 	test := func(median int64) int64 {
 		eMap["humn"].Value = median
 		res, d := eMap["root"].Check()
