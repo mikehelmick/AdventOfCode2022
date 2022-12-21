@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mikehelmick/AdventOfCode2022/pkg/search"
 	"github.com/mikehelmick/AdventOfCode2022/pkg/straid"
 )
 
@@ -102,29 +103,21 @@ func main() {
 	part1 := eMap["root"].Calculate()
 	log.Printf("part 1: %v", part1)
 
+	test := func(median int64) int64 {
+		eMap["humn"].Value = median
+		res, d := eMap["root"].Check()
+		if d == 0 {
+			log.Printf("check %v", res)
+		}
+		return d
+	}
+
 	// This runs almost as fast at 0, but some test runs helped narrow it down.
 	low := int64(1000000000000)
 	high := int64(8000000000000)
-	// Binary search for the humn value that causes check to be zero.
-	for low <= high {
-		//log.Printf("-- %v -- %v --", low, high)
-		median := (low + high) / 2
-		eMap["humn"].Value = median
+	part2 := search.BinarySearch(low, high, test)
+	log.Printf("part 2: %v", part2)
 
-		res, d := eMap["root"].Check()
-		//log.Printf("check: %v diff: %v", res, d)
-		if d == 0 {
-			log.Printf("check: %v", res)
-			log.Printf("part 2 : %v", median)
-			break
-		}
-		if d > 0 {
-			low = median + 1
-		} else {
-			high = median - 1
-		}
-
-	}
 	if err := scanner.Err(); err != nil {
 		log.Println(err)
 	}
