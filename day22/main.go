@@ -14,6 +14,7 @@ import (
 const (
 	WALL = 1
 	OPEN = 2
+	FACE = 3
 )
 
 var dirs = map[string]*twod.Pos{
@@ -54,12 +55,21 @@ func (m Maze) String() string {
 	s := ""
 	for _, row := range m {
 		for _, cel := range row {
-			if cel == 0 {
+			switch cel {
+			case 0:
 				s = fmt.Sprintf("%s ", s)
-			} else if cel == WALL {
+			case WALL:
 				s = fmt.Sprintf("%s#", s)
-			} else if cel == OPEN {
+			case OPEN:
 				s = fmt.Sprintf("%s.", s)
+			case 3:
+				s = fmt.Sprintf("%s>", s)
+			case 4:
+				s = fmt.Sprintf("%sV", s)
+			case 5:
+				s = fmt.Sprintf("%s<", s)
+			case 6:
+				s = fmt.Sprintf("%s^", s)
 			}
 		}
 		s = fmt.Sprintf("%s\n", s)
@@ -80,6 +90,8 @@ func (m Maze) AddRow(s string, w int) Maze {
 	return append(m, row)
 }
 
+// These aren't necessary for part 2, but since I had them from part 1...
+// might as well reuse.
 func (m Maze) FirstOpenInRow(r int, s int, d int) int {
 	for i := s; i >= 0 && i < len(m[r]); i += d {
 		switch m[r][i] {
@@ -87,7 +99,7 @@ func (m Maze) FirstOpenInRow(r int, s int, d int) int {
 			continue
 		case WALL:
 			return -1
-		case OPEN:
+		default:
 			return i
 		}
 	}
@@ -101,7 +113,7 @@ func (m Maze) FirstOpenInCol(c int, s int, d int) int {
 			continue
 		case WALL:
 			return -1
-		case OPEN:
+		default:
 			return i
 		}
 	}
@@ -109,7 +121,7 @@ func (m Maze) FirstOpenInCol(c int, s int, d int) int {
 }
 
 func (m Maze) IsOpen(p *twod.Pos) bool {
-	return m[p.Row][p.Col] == OPEN
+	return m[p.Row][p.Col] >= OPEN
 }
 
 func (m Maze) IsWall(p *twod.Pos) bool {
@@ -145,11 +157,10 @@ func main() {
 	}
 	maze = maze.AddRow(" ", width)
 
-	fmt.Printf("%+v", maze)
 	path = strings.ReplaceAll(path, "L", " L ")
 	path = strings.ReplaceAll(path, "R", " R ")
 	parts := strings.Split(path, " ")
-	log.Printf("%+v", parts)
+	//log.Printf("%+v", parts)
 
 	pos := maze.FindStart()
 	log.Printf("starting at %+v", pos)
@@ -158,39 +169,157 @@ func main() {
 	part1 := solve(maze, parts, part1wrap)
 	log.Printf("part 1: %v", part1)
 
+	part2 := solve(maze, parts, part2wrap)
+	log.Printf("part 2: %v", part2)
+	//fmt.Printf("%+v", maze)
+
 	if err := scanner.Err(); err != nil {
 		log.Println(err)
 	}
 }
 
-type WrapFun func(Maze, string, *twod.Pos) *twod.Pos
+type WrapFun func(Maze, string, *twod.Pos) (string, *twod.Pos)
 
-var part1wrap = func(maze Maze, dir string, pos *twod.Pos) *twod.Pos {
+// Is there a more efficient way to write this... probably.
+// I did the make a physical cube and map all the transitions approach, and it works.
+var part2wrap = func(maze Maze, dir string, pos *twod.Pos) (string, *twod.Pos) {
+	switch dir {
+	case "R":
+		if pos.Row >= 1 && pos.Row <= 50 {
+			// moving from right in 2 to left in 5, but upside down; row 1->150; 50->101
+			if nc := maze.FirstOpenInRow(151-pos.Row, 101, -1); nc == -1 {
+				return dir, pos
+			} else {
+				return "L", twod.NewPos(151-pos.Row, nc)
+			}
+		} else if pos.Row >= 51 && pos.Row <= 100 {
+			// from right in 3 to up in 2; row 51-> col 101
+			if nr := maze.FirstOpenInCol(pos.Row+50, 51, -1); nr == -1 {
+				return dir, pos
+			} else {
+				return "U", twod.NewPos(nr, pos.Row+50)
+			}
+		} else if pos.Row >= 101 && pos.Row <= 150 {
+			// from right in 5 to left in 2, but upside down; row 101->50, 150->1
+			if nc := maze.FirstOpenInRow(151-pos.Row, 151, -1); nc == -1 {
+				return dir, pos
+			} else {
+				return "L", twod.NewPos(151-pos.Row, nc)
+			}
+		} else if pos.Row >= 151 && pos.Row <= 200 {
+			// from right in 6 to up in 5; row 151 -> col 51
+			if nr := maze.FirstOpenInCol(pos.Row-100, 151, -1); nr == -1 {
+				return dir, pos
+			} else {
+				return "U", twod.NewPos(nr, pos.Row-100)
+			}
+		}
+	case "L":
+		if pos.Row >= 1 && pos.Row <= 50 {
+			// left in 1 to right in 4, but upside down; row 1->150, 50->101
+			if nc := maze.FirstOpenInRow(151-pos.Row, 0, 1); nc == -1 {
+				return dir, pos
+			} else {
+				return "R", twod.NewPos(151-pos.Row, nc)
+			}
+		} else if pos.Row >= 51 && pos.Row <= 100 {
+			// left in 3 to down in 4; row 51->col 1
+			if nr := maze.FirstOpenInCol(pos.Row-50, 100, 1); nr == -1 {
+				return dir, pos
+			} else {
+				return "D", twod.NewPos(nr, pos.Row-50)
+			}
+		} else if pos.Row >= 101 && pos.Row <= 150 {
+			// left in 4 to right in 1, but upside down; row 101->50,150->1
+			if nc := maze.FirstOpenInRow(151-pos.Row, 0, 1); nc == -1 {
+				return dir, pos
+			} else {
+				return "R", twod.NewPos(151-pos.Row, nc)
+			}
+		} else if pos.Row >= 151 && pos.Row <= 200 {
+			// left to 6 down in 1; row 151 -> col 51
+			if nr := maze.FirstOpenInCol(pos.Row-100, 0, 1); nr == -1 {
+				return dir, pos
+			} else {
+				return "D", twod.NewPos(nr, pos.Row-100)
+			}
+		}
+	case "D":
+		if pos.Col >= 1 && pos.Col <= 50 {
+			// down in 6 to down in side 2, col 1->101
+			if nr := maze.FirstOpenInCol(pos.Col+100, 0, 1); nr == -1 {
+				return dir, pos
+			} else {
+				return "D", twod.NewPos(nr, pos.Col+100)
+			}
+		} else if pos.Col >= 51 && pos.Col <= 100 {
+			// down in 5 to left in side 6; col 51 -> row 151
+			if nc := maze.FirstOpenInRow(pos.Col+100, 51, -1); nc == -1 {
+				return dir, pos
+			} else {
+				return "L", twod.NewPos(pos.Col+100, nc)
+			}
+		} else if pos.Col >= 101 {
+			// down in 2 to left in side 3; col 101 -> row 51
+			if nc := maze.FirstOpenInRow(pos.Col-50, 101, -1); nc == -1 {
+				return dir, pos
+			} else {
+				return "L", twod.NewPos(pos.Col-50, nc)
+			}
+		}
+	case "U":
+		if pos.Col >= 1 && pos.Col <= 50 {
+			// up in 4 to right in side 3; col 1 -> row 51
+			if nc := maze.FirstOpenInRow(pos.Col+50, 50, 1); nc == -1 {
+				return dir, pos
+			} else {
+				return "R", twod.NewPos(pos.Col+50, nc)
+			}
+		} else if pos.Col >= 51 && pos.Col <= 100 {
+			// up in 1 to right in side 6; col 51 -> row 151
+			if nc := maze.FirstOpenInRow(pos.Col+100, 0, 1); nc == -1 {
+				return dir, pos
+			} else {
+				return "R", twod.NewPos(pos.Col+100, nc)
+			}
+		} else if pos.Col >= 101 {
+			// up in 2 to up in side 6; col 101 -> col 1
+			if nr := maze.FirstOpenInCol(pos.Col-100, 201, -1); nr == -1 {
+				return dir, pos
+			} else {
+				return "U", twod.NewPos(nr, pos.Col-100)
+			}
+		}
+	}
+	panic("you're lost")
+}
+
+var part1wrap = func(maze Maze, dir string, pos *twod.Pos) (string, *twod.Pos) {
 	switch dir {
 	case "R":
 		nc := maze.FirstOpenInRow(pos.Row, 0, 1)
 		if nc == -1 {
-			return pos
+			return dir, pos
 		}
-		return twod.NewPos(pos.Row, nc)
+		return dir, twod.NewPos(pos.Row, nc)
 	case "L":
 		nc := maze.FirstOpenInRow(pos.Row, len(maze[0])-1, -1)
 		if nc == -1 {
-			return pos
+			return dir, pos
 		}
-		return twod.NewPos(pos.Row, nc)
+		return dir, twod.NewPos(pos.Row, nc)
 	case "D":
 		nr := maze.FirstOpenInCol(pos.Col, 0, 1)
 		if nr == -1 {
-			return pos
+			return dir, pos
 		}
-		return twod.NewPos(nr, pos.Col)
+		return dir, twod.NewPos(nr, pos.Col)
 	case "U":
 		nr := maze.FirstOpenInCol(pos.Col, len(maze)-1, -1)
 		if nr == -1 {
-			return pos
+			return dir, pos
 		}
-		return twod.NewPos(nr, pos.Col)
+		return dir, twod.NewPos(nr, pos.Col)
 	}
 	panic("you're lost")
 }
@@ -200,9 +329,12 @@ func solve(maze Maze, parts []string, wrap WrapFun) int {
 	dir := "R"
 	for i, p := range parts {
 		if i%2 == 0 {
+			//log.Printf("%v MOVE %v DIR %v", pos, p, dir)
+			//fmt.Printf("%+v", maze)
 			steps := int(straid.AsInt(p))
 
 			for s := 0; s < steps; s++ {
+				maze[pos.Row][pos.Col] = FACE + facing[dir]
 				next := pos.Clone()
 				next.Add(dirs[dir])
 				if maze.IsOpen(next) {
@@ -212,13 +344,17 @@ func solve(maze Maze, parts []string, wrap WrapFun) int {
 					break
 				}
 				if maze.IsOutOfBounds(next) {
-					pos = wrap(maze, dir, pos)
+					dir, pos = wrap(maze, dir, pos)
 				}
+
+				//fmt.Printf("%+v", maze)
+				//time.Sleep(500 * time.Millisecond)
 			}
 		} else {
 			dir = turns[dir][p]
 		}
 	}
+	log.Printf("ended at %v facing %v", pos, dir)
 	answer := 1000*pos.Row + 4*pos.Col + facing[dir]
 	return answer
 }
