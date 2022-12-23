@@ -1,6 +1,11 @@
 package twod
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/mikehelmick/AdventOfCode2022/pkg/straid"
+)
 
 var (
 	Dirs = map[string]*Pos{
@@ -28,6 +33,16 @@ func NewPos(r, c int) *Pos {
 		Row: r,
 		Col: c,
 	}
+}
+
+func FromString(s string) *Pos {
+	s = strings.ReplaceAll(s, "{", "")
+	s = strings.ReplaceAll(s, "}", "")
+	parts := strings.Split(s, ",")
+
+	r := int(straid.AsInt(parts[0]))
+	c := int(straid.AsInt(parts[1]))
+	return NewPos(r, c)
 }
 
 func (p *Pos) String() string {
