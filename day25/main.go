@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"log"
 	"os"
-	"strings"
 )
 
 func Convert(s string) int64 {
@@ -27,37 +26,6 @@ func Convert(s string) int64 {
 		place *= 5
 	}
 	return sum
-}
-
-type Possibility struct {
-	Parts []string
-}
-
-func (p *Possibility) Clone() *Possibility {
-	np := make([]string, len(p.Parts))
-	copy(np, p.Parts)
-	return &Possibility{
-		Parts: np,
-	}
-}
-
-func New(places int, seed string) *Possibility {
-	parts := make([]string, places)
-	parts[0] = seed
-	for i := 1; i < len(parts); i++ {
-		parts[i] = "0"
-	}
-	return &Possibility{
-		Parts: parts,
-	}
-}
-
-func (p *Possibility) Snafu() string {
-	return strings.Join(p.Parts, "")
-}
-
-func (p *Possibility) Value() int64 {
-	return Convert(strings.Join(p.Parts, ""))
 }
 
 func Reverse(v int64) string {
